@@ -36,14 +36,14 @@ First let's load the data and setup our workspace.
 if (!dir.exists("./data")) {
   dir.create("./data/")
   download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/pml-training.csv")
-  download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/pml-testing.csv")
+  download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./data/pml-testing.csv")
 }
 ```
 
 ```{r libraries, warning = F}
 library(tidyverse)
 library(caret)
-set.seed(12321)
+set.seed(1234)
 ```
 
 ```{r loadData,warning=F}
@@ -62,22 +62,114 @@ More than 60% of our data consists of missing values. We'll drop the columns whi
 ```{r tidyData}
 dropCols <- colSums(is.na(train_data)) > 0.95 * dim(train_data)[1]
 train_data <- train_data[, -c(1:dim(train_data)[2]) * dropCols]
+```
 
-train_data$user_name <- as.factor(train_data$user_name)
-train_data$classe <- as.factor(train_data$classe)
-train_data$new_window <- as.factor(train_data$new_window)
-train_data$cvtd_timestamp <- as.Date(train_data$cvtd_timestamp)
 
+### Train and Cross Validation Data
+Now let's seperat the output from input. And also split our data into two chunks, one for training and one for cross validation.
+```{r splitData}
 # lets save the output y in a seperate dataframe
+out_vector <- c("...1", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window", "classe")
 y <- train_data %>%
-  select_if(negate(is.numeric))
+  select(out_vector)
+
+y$classe <- as.factor(train_data$classe)
 
 train_data <- train_data %>%
-  select_if((is.numeric))
+  select(-out_vector)
+
+index <- createDataPartition(y$classe, p = 0.7, list = F)
+cv_data <- train_data[-index, ]
+cv_y <- y[-index, ]
+train_data <- train_data[index, ]
+y <- y[index, ]
 ```
 
 ```{r preProcess}
-preProcessObj <- preProcess(train_data, method = "pca", thresh = 0.99)
+preProcessObj00 <- preProcess(train_data, method = c("center", "scale"))
+preProcessObj99 <- preProcess(train_data, method = "pca", thresh = 0.99)
+preProcessObj95 <- preProcess(train_data, method = "pca", thresh = 0.95)
+preProcessObj90 <- preProcess(train_data, method = "pca", thresh = 0.90)
+preProcessObj60 <- preProcess(train_data, method = "pca", thresh = 0.60)
+preProcessObj30 <- preProcess(train_data, method = "pca", thresh = 0.30)
+```
+```{r myPreProcess}
+myPreProcess <- function(data, ...) {
+  for (obj in list(...)) {
+    # data <- predict(obj, data)
+    print(obj)
+  }
+  data
+}
+# train_pre <- myPreProcess(train_data, preProcessObj90, preProcessObj00)
+# train_pre <- myPreProcess(train_data, 1, 2, 3, 4)
+```
 
-train_data <- predict(preProcessObj, train_data)
+```{r}
+fitModel_lda <- train(
+  x = train_data,
+  y = y$classe,
+  method = "lda"
+)
+```
+
+```{r}
+cv_predict <- predict(
+  fitModel_lda,
+  cv_data
+)
+cfmtrx_lda <- confusionMatrix(cv_y$classe, cv_predict)
+cfmtrx_lda
+```
+
+```{r}
+fitModel_svm <- train(
+  x =
+  # predict(
+  # preProcessObj90,
+  # predict(
+  # preProcessObj00,
+    train_data,
+  # )
+  # ),
+  y = y$classe,
+  method = "svmLinear",
+  trControl = control,
+  tuneLength = 5,
+  verbose = F
+)
+```
+
+```{r}
+cv_predict <- predict(
+  fitModel_svm,
+  # predict(
+  # preProcessObj90,
+  # predict(
+  # preProcessObj00,
+  cv_data,
+  # )
+  # ),
+)
+
+cfmtrx_svm <- confusionMatrix(cv_y$classe, cv_predict)
+cfmtrx_svm
+```
+
+
+```{r fromBlog}
+control <- trainControl(method = "cv", number = 3, verboseIter = F)
+
+mod_svm <- train(
+  x = train_data,
+  y = y$classe,
+  method = "svmLinear",
+  trControl = control,
+  tuneLength = 5,
+  verbose = F
+)
+
+pred_svm <- predict(mod_svm, cv_data)
+cmsvm <- confusionMatrix(pred_svm, factor(cv_y$classe))
+cmsvm
 ```
