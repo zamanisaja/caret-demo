@@ -1,5 +1,6 @@
 ---
 title: "Prediction Assignment Writeup"
+author: "Saja"
 output: 
   html_document:
     keep_md: true
@@ -12,7 +13,6 @@ knitr::opts_knit$set(cache = TRUE)
 knitr::opts_chunk$set(fig.path = "./figure/")
 knitr::opts_chunk$set(fig.align = "center")
 ```
-
 
 ### Introduction
 
@@ -43,7 +43,7 @@ if (!dir.exists("./data")) {
 ```{r libraries, warning = F}
 library(tidyverse)
 library(caret)
-set.seed(1234)
+set.seed(12321)
 ```
 
 ```{r loadData,warning=F}
@@ -64,8 +64,7 @@ dropCols <- colSums(is.na(train_data)) > 0.95 * dim(train_data)[1]
 train_data <- train_data[, -c(1:dim(train_data)[2]) * dropCols]
 ```
 
-
-### Train and Cross Validation Data
+## Train and Cross-Validation Data
 Now let's seperat the output from input. And also split our data into two chunks, one for training and one for cross validation.
 ```{r splitData}
 # lets save the output y in a seperate dataframe
@@ -85,91 +84,66 @@ train_data <- train_data[index, ]
 y <- y[index, ]
 ```
 
+### Pre Process
 ```{r preProcess}
-preProcessObj00 <- preProcess(train_data, method = c("center", "scale"))
-preProcessObj99 <- preProcess(train_data, method = "pca", thresh = 0.99)
-preProcessObj95 <- preProcess(train_data, method = "pca", thresh = 0.95)
-preProcessObj90 <- preProcess(train_data, method = "pca", thresh = 0.90)
-preProcessObj60 <- preProcess(train_data, method = "pca", thresh = 0.60)
-preProcessObj30 <- preProcess(train_data, method = "pca", thresh = 0.30)
-```
-```{r myPreProcess}
-myPreProcess <- function(data, ...) {
-  for (obj in list(...)) {
-    # data <- predict(obj, data)
-    print(obj)
-  }
-  data
-}
-# train_pre <- myPreProcess(train_data, preProcessObj90, preProcessObj00)
-# train_pre <- myPreProcess(train_data, 1, 2, 3, 4)
+preProcessObj <- preProcess(train_data, method = c("center", "scale", "pca"))
 ```
 
+## Training
+
+### LDA
+**Model**
 ```{r}
 fitModel_lda <- train(
   x = train_data,
   y = y$classe,
+  preProcess = c("center", "scale"),
   method = "lda"
 )
 ```
 
+**Prediction**
 ```{r}
-cv_predict <- predict(
-  fitModel_lda,
-  cv_data
-)
+cv_predict <- predict(fitModel_lda, cv_data)
+
 cfmtrx_lda <- confusionMatrix(cv_y$classe, cv_predict)
-cfmtrx_lda
+cfmtrx_lda$overall
 ```
 
+### SVM
+**Model**
 ```{r}
 fitModel_svm <- train(
-  x =
-  # predict(
-  # preProcessObj90,
-  # predict(
-  # preProcessObj00,
-    train_data,
-  # )
-  # ),
-  y = y$classe,
-  method = "svmLinear",
-  trControl = control,
-  tuneLength = 5,
-  verbose = F
-)
-```
-
-```{r}
-cv_predict <- predict(
-  fitModel_svm,
-  # predict(
-  # preProcessObj90,
-  # predict(
-  # preProcessObj00,
-  cv_data,
-  # )
-  # ),
-)
-
-cfmtrx_svm <- confusionMatrix(cv_y$classe, cv_predict)
-cfmtrx_svm
-```
-
-
-```{r fromBlog}
-control <- trainControl(method = "cv", number = 3, verboseIter = F)
-
-mod_svm <- train(
   x = train_data,
   y = y$classe,
   method = "svmLinear",
-  trControl = control,
+  preProcess = c("center", "scale"),
+  trControl = trainControl(method = "cv", number = 3, verboseIter = F),
   tuneLength = 5,
   verbose = F
 )
+```
+**Prediction**
+```{r}
+cv_predict <- predict(fitModel_svm, cv_data)
 
-pred_svm <- predict(mod_svm, cv_data)
-cmsvm <- confusionMatrix(pred_svm, factor(cv_y$classe))
-cmsvm
+cfmtrx_svm <- confusionMatrix(cv_y$classe, cv_predict)
+cfmtrx_svm$overall
+```
+
+### Random Forrest
+```{r}
+fitModel_rf <- train(
+  x = train_data,
+  y = y$classe,
+  method = "rf",
+  preProcess = c("center", "scale", "pca")
+)
+```
+**Prediction**
+```{r}
+cv_predict <- predict(fitModel_rf, cv_data)
+
+cfmtrx_rf <- confusionMatrix(cv_y$classe, cv_predict)
+cfmtrx_rf$overall
 ```
