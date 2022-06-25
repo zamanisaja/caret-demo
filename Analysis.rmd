@@ -84,11 +84,6 @@ train_data <- train_data[index, ]
 y <- y[index, ]
 ```
 
-### Pre Process
-```{r preProcess}
-preProcessObj <- preProcess(train_data, method = c("center", "scale", "pca"))
-```
-
 ## Training
 
 ### LDA
