@@ -31,10 +31,53 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
 
 ### Loading the data
+First let's load the data and setup our workspace.
 ```{r echo=FALSE}
 if (!dir.exists("./data")) {
   dir.create("./data/")
   download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/pml-training.csv")
   download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./data/pml-testing.csv")
 }
+```
+
+```{r libraries, warning = F}
+library(tidyverse)
+library(caret)
+set.seed(12321)
+```
+
+```{r loadData,warning=F}
+train_data <- read_csv("./data/pml-training.csv")
+test_data <- read_csv("./data/pml-testing.csv")
+```
+
+```{r }
+dim(train_data)
+# names(train_data)
+sum(is.na(train_data)) / (dim(train_data)[1] * dim(train_data)[2])
+```
+
+More than 60% of our data consists of missing values. We'll drop the columns which more than 95% of missing values in them.
+
+```{r tidyData}
+dropCols <- colSums(is.na(train_data)) > 0.95 * dim(train_data)[1]
+train_data <- train_data[, -c(1:dim(train_data)[2]) * dropCols]
+
+train_data$user_name <- as.factor(train_data$user_name)
+train_data$classe <- as.factor(train_data$classe)
+train_data$new_window <- as.factor(train_data$new_window)
+train_data$cvtd_timestamp <- as.Date(train_data$cvtd_timestamp)
+
+# lets save the output y in a seperate dataframe
+y <- train_data %>%
+  select_if(negate(is.numeric))
+
+train_data <- train_data %>%
+  select_if((is.numeric))
+```
+
+```{r preProcess}
+preProcessObj <- preProcess(train_data, method = "pca", thresh = 0.99)
+
+train_data <- predict(preProcessObj, train_data)
 ```
