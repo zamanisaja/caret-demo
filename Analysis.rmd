@@ -137,7 +137,7 @@ fitModel_rf <- train(
   x = train_data,
   y = y$classe,
   method = "rf",
-  preProcess = c("center", "scale", "pca")
+  preProcess = c("center", "scale")
 )
 ```
 **Prediction**
