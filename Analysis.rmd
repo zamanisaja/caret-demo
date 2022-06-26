@@ -92,7 +92,6 @@ preProcessObj <- preProcess(train_data, method = c("center", "scale", "pca"))
 ## Training
 
 ### LDA
-**Model**
 ```{r}
 fitModel_lda <- train(
   x = train_data,
@@ -100,18 +99,14 @@ fitModel_lda <- train(
   preProcess = c("center", "scale"),
   method = "lda"
 )
-```
 
-**Prediction**
-```{r}
-cv_predict <- predict(fitModel_lda, cv_data)
+lda_predict <- predict(fitModel_lda, cv_data)
 
-cfmtrx_lda <- confusionMatrix(cv_y$classe, cv_predict)
+cfmtrx_lda <- confusionMatrix(cv_y$classe, lda_predict)
 cfmtrx_lda$overall
 ```
 
 ### SVM
-**Model**
 ```{r}
 fitModel_svm <- train(
   x = train_data,
@@ -122,12 +117,10 @@ fitModel_svm <- train(
   tuneLength = 5,
   verbose = F
 )
-```
-**Prediction**
-```{r}
-cv_predict <- predict(fitModel_svm, cv_data)
 
-cfmtrx_svm <- confusionMatrix(cv_y$classe, cv_predict)
+svm_predict <- predict(fitModel_svm, cv_data)
+
+cfmtrx_svm <- confusionMatrix(cv_y$classe, svm_predict)
 cfmtrx_svm$overall
 ```
 
@@ -137,13 +130,63 @@ fitModel_rf <- train(
   x = train_data,
   y = y$classe,
   method = "rf",
-  preProcess = c("center", "scale", "pca")
+  preProcess = c("center", "scale"),
+  trControl = trainControl(method = "cv", number = 3, verboseIter = F),
+  tuneLength = 5,
+  verbose = F
 )
-```
-**Prediction**
-```{r}
-cv_predict <- predict(fitModel_rf, cv_data)
 
-cfmtrx_rf <- confusionMatrix(cv_y$classe, cv_predict)
+rf_predict <- predict(fitModel_rf, cv_data)
+
+cfmtrx_rf <- confusionMatrix(cv_y$classe, rf_predict)
 cfmtrx_rf$overall
+```
+
+### GBM
+```{r}
+fitModel_gbm <- train(
+  x = train_data,
+  y = y$classe,
+  method = "gbm",
+  preProcess = c("center", "scale"),
+  # trControl = trainControl(method = "cv", number = 3, verboseIter = F),
+  tuneLength = 1,
+  # verbose = F
+)
+
+gbm_predict <- predict(fitModel_gbm, cv_data)
+
+cfmtrx_gbm <- confusionMatrix(cv_y$classe, gbm_predict)
+cfmtrx_gbm$overall
+```
+
+
+### Mixed
+```{r}
+mixed_pred_data <- data.frame(
+  lda = predict(fitModel_lda),
+  svm = predict(fitModel_svm),
+  rf = predict(fitModel_rf),
+  gbm = predict(fitModel_gbm),
+  classe = y$classe
+)
+
+fitModel_mix <- train(
+  classe ~ .,
+  data = mixed_pred_data,
+  method = "rpart",
+  tuneLength = 7,
+)
+
+mixed_cv_data <- data.frame(
+  lda = lda_predict,
+  svm = svm_predict,
+  rf = rf_predict,
+  gbm = gbm_predict,
+  classe = cv_y$classe
+)
+
+mixed_predict <- predict(fitModel_mix, mixed_cv_data)
+cfmtrx_mix <- confusionMatrix(mixed_cv_data$classe, mixed_predict)
+cfmtrx_mix$overall
 ```
