@@ -43,6 +43,10 @@ if (!dir.exists("./data")) {
 ```{r libraries, warning = F}
 library(tidyverse)
 library(caret)
+library(lattice)
+library(kernlab)
+library(rattle)
+library(corrplot)
 set.seed(12321)
 ```
 
@@ -149,9 +153,9 @@ fitModel_gbm <- train(
   y = y$classe,
   method = "gbm",
   preProcess = c("center", "scale"),
-  # trControl = trainControl(method = "cv", number = 3, verboseIter = F),
+  trControl = trainControl(method = "cv", number = 3, verboseIter = F),
   tuneLength = 1,
-  # verbose = F
+  verbose = F
 )
 
 gbm_predict <- predict(fitModel_gbm, cv_data)
@@ -189,4 +193,6 @@ mixed_cv_data <- data.frame(
 mixed_predict <- predict(fitModel_mix, mixed_cv_data)
 cfmtrx_mix <- confusionMatrix(mixed_cv_data$classe, mixed_predict)
 cfmtrx_mix$overall
+
+fancyRpartPlot(fitModel_mix$finalModel)
 ```
