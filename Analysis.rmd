@@ -7,7 +7,7 @@ output:
 ---
 ```{r include=FALSE}
 # some global options
-knitr::opts_chunk$set(warning = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(message = FALSE)
 knitr::opts_knit$set(cache = TRUE)
 knitr::opts_chunk$set(fig.path = "./figure/")
@@ -88,12 +88,9 @@ train_data <- train_data[index, ]
 y <- y[index, ]
 ```
 
-### Pre Process
-```{r preProcess}
-preProcessObj <- preProcess(train_data, method = c("center", "scale", "pca"))
-```
-
 ## Training
+
+Now I'm going to test different kinds of modelling for the data.
 
 ### LDA
 ```{r}
@@ -164,6 +161,7 @@ cfmtrx_gbm <- confusionMatrix(cv_y$classe, gbm_predict)
 cfmtrx_gbm$overall
 ```
 
+Thne we can create a mix predictor based on previous predictions.
 
 ### Mixed
 ```{r}
@@ -195,4 +193,18 @@ cfmtrx_mix <- confusionMatrix(mixed_cv_data$classe, mixed_predict)
 cfmtrx_mix$overall
 
 fancyRpartPlot(fitModel_mix$finalModel)
+```
+
+By this diagram we can conclude that the fix model is exactly behaving like Random Forrest prediction.
+So I'll pick that model to predict my test set.
+
+
+### Predict Test set
+
+We can now use the predictor on the test data.
+
+```{r predictTest}
+test_pred <- predict(fitModel_rf, test_data)
+
+print(test_pred)
 ```
